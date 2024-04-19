@@ -12,19 +12,9 @@ import cn.hutool.log.LogFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.stackbug.freechat.model.ChatCompletionRequest;
 import dev.stackbug.freechat.model.MessageDTO;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpHeaders;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -66,8 +56,8 @@ public class ChatService {
 
     public void getNewSessionId() throws JsonProcessingException {
         String      newDeviceId = UUID.randomUUID().toString();
-        HttpRequest request     = HttpUtil.createPost(baseUrl + "/backend-anon/sentinel/chat-requirements");
-        request.header("oai-device-id", newDeviceId);
+        HttpRequest request     = HttpUtil.createPost("https://chat.openai.com/backend-anon/sentinel/chat-requirements");
+        request.header("Oai-Device-Id", newDeviceId);
         request.setHttpProxy(proxyHost, proxyPort);
         request.body("{}");
         HttpResponse response = request.execute();
@@ -264,6 +254,7 @@ public class ChatService {
         try {
             String publicIp = getCurrentPublicIP();
             System.out.println("Public IP address via proxy is: " + publicIp);
+            getNewSessionId();
             getNewSessionId();
             System.out.println("Successfully refreshed session ID: " + token);
         } catch (Exception e) {
