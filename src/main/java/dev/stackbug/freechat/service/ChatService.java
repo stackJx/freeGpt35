@@ -112,6 +112,7 @@ public class ChatService {
 
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
         CompletableFuture.supplyAsync(() -> {
+            JSONObject lastResponse = null;
             try {
                 HttpResponse response = httpRequest.execute();
 
@@ -123,7 +124,6 @@ public class ChatService {
                     try (InputStream inputStream = response.bodyStream();
                          BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
                         String line;
-                        String lastMessage = null;
                         while ((line = reader.readLine()) != null) {
                             // 使用正则表达式过滤掉心跳消息
                             if (!line.matches("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6}$")) {
@@ -137,7 +137,6 @@ public class ChatService {
 
                                 // 如果行内容为 [DONE],则表示数据读取完毕,完成发送并退出循环
                                 if ("[DONE]".equals(line)) {
-                                    emitter.complete();
                                     break;
                                 }
 
@@ -179,7 +178,7 @@ public class ChatService {
                                 // 创建一个 JSONObject 用于存储 choice
                                 JSONObject choice = new JSONObject();
                                 JSONObject delta  = new JSONObject();
-                                delta.set("content", content.replace(fullContent, "")); // 设置 delta 内容
+                                delta.set("content", content); // 设置 delta 内容
                                 choice.set("delta", delta) // 设置 delta 对象
                                         .set("index", 0) // 设置 choice 索引
                                         .set("finish_reason", null); // 设置完成原因
@@ -193,13 +192,16 @@ public class ChatService {
                                 // 记录响应数据
                                 log.info(res.toString());
 
-                                // 通过 SSE 发送响应数据
-                                emitter.send(SseEmitter.event().name("message").data(res.toString()));
+                                // 更新 lastResponse 变量
+                                lastResponse = res;
 
                                 // 更新 fullContent 变量
-                                fullContent = content.length() > fullContent.length() ? content : fullContent;
+//                            fullContent = content.length() > fullContent.length() ? content : fullContent;
                             }
 
+                        }
+                        if (lastResponse != null) {
+                            emitter.send(SseEmitter.event().name("message").data(lastResponse.toString(), MediaType.APPLICATION_JSON));
                         }
                         emitter.complete();
                     } catch (IOException e) {
@@ -216,7 +218,6 @@ public class ChatService {
 
         return emitter;
     }
-
 
     private JSONObject createRequestBody(ChatCompletionRequest request) {
         JSONArray messagesArray = JSONUtil.createArray();
